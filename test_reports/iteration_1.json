@@ -1,0 +1,54 @@
+{
+  "summary": "First full E2E run of BenchOS. Backend: 32 pytest regression tests (auth/MFA, scope, redaction, tenant isolation, duplicates, assign/transfer/unassign/archive/restore, concurrency 409/422, full pipeline submission->interview->reschedule->offer->accept->placement->end, simulated scan PASSED/FAILED(EICAR)+signed URL download, invite->activate->deactivate (session revoked), group members, settings admin-only, audit/dashboards/reports, export/import incl. dup skip, role guards). 30/32 pass; 2 real bugs. Frontend (Playwright): admin MFA login, dashboard, wizard dup banner block + create, quick create, full lifecycle on detail page (transitions, TRANSFER typed confirm, active-offer ack checkbox, pipeline tab submission/interview with timezone/reschedule history/offer/accept/PLACE/END, UNASSIGN with BENCH choice, ARCHIVE/restore without group), documents (Scanning->Clean, EICAR->Quarantined, download disabled until PASSED), notes OPERATIONS_ONLY, tasks, timeline, audit tab, kanban BENCH<->MARKETING drag + invalid drag toast + table toggle, lead/auditor/marketing scoped views and rate redaction, invite+activation link+activate+deactivate, group add/remove member, imports/exports + CSV download, audit filter, lead export restricted, settings save, notifications bell, northwind isolation. All passed except issues listed.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/candidates/duplicate-check (also POST /api/candidates, PATCH /api/candidates/{id}, CSV import worker)", "issue": "500 AttributeError: 'NoneType' object has no attribute 'lower' in candidates.py find_duplicates line 145: `c.get('email', '').lower()` crashes when the matched existing candidate has email=None (phone-only match, e.g. quick-created or CSV-imported candidates without email). Breaks wizard dup banner, candidate creation and makes whole import job FAILED. Fix: `(c.get('email') or '').lower()`.", "priority": "HIGH"},
+      {"endpoint": "POST /api/candidates with group_id (wizard 'Assign to group' step / quick create with group)", "issue": "Candidate gets current_group_id but status stays NEW. /assign endpoint auto-transitions NEW->BENCH, but create_candidate calls assign_service without set_status. Spec: assign group -> NEW->BENCH. Reproduced in UI (wizard with Java & Cloud -> status NEW).", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/candidates/{id} permissions.allowed_transitions", "issue": "Includes PLACED for ops when OFFERED (header shows PLACED button that always fails 'Use the placement workflow') and MARKETING for unassigned BENCH candidates (always 422 'must be assigned'). Filter these out server-side."},
+      {"endpoint": "POST /api/invitations", "issue": "group_id not validated to belong to caller's organization / be active; group_role silently ignored if invalid."},
+      {"endpoint": "PUT /api/settings", "issue": "No server-side validation (types, positive ints, warning < critical); only client-side."},
+      {"endpoint": "POST /api/pipeline/placements & offers audit", "issue": "CANDIDATE_PLACED audit uses entity_type 'placement' / placement id, so placement & offer events do not appear in the candidate Audit tab."},
+      {"endpoint": "PATCH /api/tasks/{tid}", "issue": "status not validated against allowed values (any string accepted)."},
+      {"endpoint": "POST /api/candidates/{cid}/notes", "issue": "VIEWER group role (no edit level) can add STANDARD notes due to `and user['role'] != EMP` condition - confirm intended."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Settings page", "issue": "useEffect depends on [isAdmin] causing 2 GET /settings on mount; if admin edits quickly, the second response overwrites edits and Save persists old value (observed once: typed 10, saved 14). Fetch once / guard against overwrite.", "selector": "[data-testid='setting-bench_aging_warning_days']", "priority": "LOW"},
+      {"component": "Candidate header actions", "issue": "PLACED transition button (ops, OFFERED) and MARKETING button (unassigned BENCH) are shown but always fail server-side", "selector": "[data-testid='transition-placed-button']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Wizard/quick create with group", "issue": "Created candidate shows group but status NEW (backend bug above)", "affected_selectors": ["[data-testid='wizard-group-select']", "[data-testid='candidate-status-badge']"]},
+      {"flow": "Wizard duplicate check by phone", "issue": "duplicate-check 500 when phone matches a candidate without email -> banner never shows and create also 500s", "affected_selectors": ["[data-testid='candidate-duplicate-warning-banner']"]}
+    ],
+    "design_issues": [
+      {"screen": "Mobile (390px) all app pages", "issues": ["Sidebar is always expanded (~240px) with no hamburger/drawer; main content squeezed to ~150px, KPI labels truncated, header user name/role clipped"]},
+      {"screen": "Interview/offer/placement/task dialogs", "issues": ["Use browser-native datetime-local/date inputs instead of shadcn Calendar/Popover date picker"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_benchos.py", "/app/backend/tests/conftest.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix find_duplicates null-email crash: `(c.get('email') or '').lower()` in candidates.py:145",
+    "In create_candidate, after assign_service when body.group_id is set, transition NEW->BENCH (same as /assign)",
+    "Filter allowed_transitions: drop PLACED always (placement workflow) and MARKETING when no current_group_id",
+    "Settings page: fetch settings once (don't refetch when isAdmin resolves) and add server-side validation in PUT /settings",
+    "Add responsive mobile navigation (collapsible drawer) for <768px",
+    "Optional: replace native date/datetime inputs with shadcn Calendar; validate invitation group_id belongs to org"
+  ],
+  "critical_code_review_comments": [
+    "candidates.py find_duplicates: unsafe .lower() on possibly-None email (500)",
+    "create_candidate with group_id bypasses NEW->BENCH auto transition implemented in /assign (logic duplication; move into assign_service)",
+    "pipeline.update_entity: find_one_and_update filter lacks organization_id (safe only because of prior check) and version defaults to current, so optimistic locking is optional",
+    "pipeline scope_filter for EMPLOYEE uses group_id of submission so MARKETING role sees all submissions of the group incl. candidates hidden by candidate_scope (BENCH not owned)",
+    "worker: single sequential job loop - a big import blocks scans (scan SLA ~5s may slip)"
+  ],
+  "updated_files": ["/app/backend/tests/test_benchos.py", "/app/backend/tests/conftest.py"],
+  "success_rate": {"backend": "94% (30/32)", "frontend": "~92% (all flows work; 2 integration bugs from backend + settings race + mobile layout)"},
+  "test_credentials": "Used /app/memory/test_credentials.md (admin TOTP worked, all Demo@12345 users worked). Created invite users test_inv_*@acme.test / test_ui_inv_*@acme.test (password Test@12345, now DEACTIVATED).",
+  "seed_data_creation": "Created many TEST_* candidates (archived at end as cleanup), test invite users (deactivated), submissions/offers/placements on TEST_ candidates, CSV import jobs. Northwind settings reset to 14.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `cd /app/backend/tests && python -m pytest test_benchos.py -q` (pytest.ini uses xdist). conftest caches logins; admin uses TOTP. Expected failing until fixed: test_phone_dup_with_null_email_candidate, test_create_with_group_sets_bench. Kanban drag in Playwright: use dispatch_event dragstart/dragover/drop with DataTransfer (mouse drag_to picked wrong card after scroll). Avoid wrong passwords (5-attempt lockout)."
+}

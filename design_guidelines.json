@@ -1,0 +1,152 @@
+{
+  "project_name": "Consultancy Recruitment & Bench Manager",
+  "app_type": "dashboard / enterprise_saas",
+  "archetype": "THE PERFORMANCE PRO / TACTICAL ENTERPRISE B2B",
+  "emotional_tone": "Authoritative, data-dense, razor-sharp, friction-free enterprise precision",
+  "theme_support": {
+    "default_mode": "dark",
+    "toggle_supported": true,
+    "dark_theme": {
+      "bg_app": "bg-[#090D16]",
+      "bg_surface": "bg-[#111827]",
+      "bg_surface_elevated": "bg-[#1F2937]",
+      "bg_surface_hover": "bg-[#283548]",
+      "border": "border-[#2D3748]",
+      "border_focus": "border-[#4F46E5]",
+      "text_primary": "text-slate-50",
+      "text_secondary": "text-slate-400",
+      "text_muted": "text-slate-500",
+      "accent_primary": "bg-indigo-600 hover:bg-indigo-500 text-white",
+      "accent_secondary": "bg-emerald-600 hover:bg-emerald-500 text-white",
+      "status_bench": "bg-amber-500/15 text-amber-300 border-amber-500/30",
+      "status_placed": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+      "status_interview": "bg-sky-500/15 text-sky-300 border-sky-500/30",
+      "status_quarantined": "bg-rose-500/15 text-rose-300 border-rose-500/30"
+    },
+    "light_theme": {
+      "bg_app": "bg-[#F8FAFC]",
+      "bg_surface": "bg-white",
+      "bg_surface_elevated": "bg-[#F1F5F9]",
+      "bg_surface_hover": "bg-[#E2E8F0]",
+      "border": "border-[#E2E8F0]",
+      "border_focus": "border-[#4F46E5]",
+      "text_primary": "text-slate-900",
+      "text_secondary": "text-slate-600",
+      "text_muted": "text-slate-400",
+      "accent_primary": "bg-indigo-600 hover:bg-indigo-700 text-white",
+      "accent_secondary": "bg-emerald-600 hover:bg-emerald-700 text-white",
+      "status_bench": "bg-amber-100 text-amber-800 border-amber-300",
+      "status_placed": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "status_interview": "bg-sky-100 text-sky-800 border-sky-300",
+      "status_quarantined": "bg-rose-100 text-rose-800 border-rose-300"
+    }
+  },
+  "typography": {
+    "heading_font": "Outfit, Manrope, sans-serif",
+    "body_font": "IBM Plex Sans, DM Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "forbidden_fonts": ["Space Grotesk", "Inter (for headings)"],
+    "scale": {
+      "h1": "text-3xl lg:text-4xl font-extrabold tracking-tight",
+      "h2": "text-xl lg:text-2xl font-bold tracking-tight",
+      "h3": "text-lg font-semibold tracking-normal",
+      "h4": "text-base font-semibold",
+      "body": "text-xs md:text-sm font-normal leading-relaxed",
+      "caption": "text-xs font-medium tracking-wide"
+    }
+  },
+  "forbidden_rules": [
+    "FORBIDDEN: Teal green or teal blue (#1B93A4) anywhere in color palette",
+    "FORBIDDEN: Space Grotesk font family",
+    "FORBIDDEN: Inter font family for Main or Sub-headings (Inter allowed for dense data text only)",
+    "FORBIDDEN: Public marketing header or landing page (App starts at Login/Activation)",
+    "FORBIDDEN: Generic centered app containers or full screen blur overlays without content legibility",
+    "FORBIDDEN: Toast notifications for routine non-confirmations (Toasts strictly reserved for explicit state changes like transfers/unassign/placements/creations)",
+    "FORBIDDEN: Pure black #000000 or pure transparent overlays without backdrop filter/scrim"
+  ],
+  "layout_and_density": {
+    "type": "Mode B - High Density Enterprise Grid",
+    "table_density": "Compact (cell py-2 px-3, text-xs/sm, strict truncation, zero overflow)",
+    "border_radius": "rounded-md (max 6px)",
+    "spacing": "Dense enterprise layout with generous card margins (gap-4 to gap-6), tight content padding (p-3 to p-5)",
+    "sidebar_behavior": "Collapsible sticky sidebar with multi-tenant consultancy dropdown, active group indicator, quick global search (Cmd+K)"
+  },
+  "component_design_patterns": {
+    "tables": "Sticky header, alternating row background, hover highlight, inline action buttons with permission badges, bulk selection bar with active count.",
+    "modal_dialogs": "Strong confirmation dialogs requiring typed confirmation string (e.g. 'TRANSFER' or 'UNASSIGN') for irreversible operations.",
+    "forms": "Keyboard-friendly focus order, inline real-time duplicate check with warning banner, auto-formatting phone/email/SSN, clear error validation states.",
+    "badges": "High contrast APCA approved status badges with dot indicators (Active, Bench, In Interview, Placed, Offboarded, Quarantined).",
+    "kanban_marketing": "Column-based drag & drop with candidate card summary (Skill tags, Experience, Hourly rate target, Active sub-count, Quarantine badge).",
+    "quarantine_scanner": "Versioned document rows featuring scanning status (Clean - Green Shield, Scanning - Amber Spinner, Quarantined - Red Alert with details)."
+  },
+  "image_urls": {
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1789757165446-daec9334f72e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBjb25zdWx0YW50JTIwcG9ydHJhaXQlMjBidXNpbmVzcyUyMGNvcnBvcmF0ZXxlbnwwfHx8fDE3OTM0MzA4NTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Consultant Marcus Vance - Senior Cloud Architect"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1780733057947-7b57f5108f68?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBjb25zdWx0YW50JTIwcG9ydHJhaXQlMjBidXNpbmVzcyUyMGNvcnBvcmF0ZXxlbnwwfHx8fDE3OTM0MzA4NTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Consultant Sarah Jenkins - Lead Data Engineer"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1771240730278-55a716725567?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBjb25zdWx0YW50JTIwcG9ydHJhaXQlMjBidXNpbmVzcyUyMGNvcnBvcmF0ZXxlbnwwfHx8fDE3OTM0MzA4NTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Consultant Priya Sharma - Full Stack Developer"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762341124796-530c0085f7d8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjb25zdWx0YW50JTIwcG9ydHJhaXQlMjBidXNpbmVzcyUyMGNvcnBvcmF0ZXxlbnwwfHx8fDE3OTM0MzA4NTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Consultant Elena Rostova - DevOps Specialist"
+      }
+    ]
+  },
+  "required_data_testids": [
+    "app-sidebar",
+    "consultancy-tenant-select",
+    "active-group-badge",
+    "global-search-input",
+    "nav-candidates-link",
+    "nav-bench-link",
+    "nav-marketing-link",
+    "nav-submissions-link",
+    "nav-interviews-link",
+    "nav-offers-link",
+    "nav-placements-link",
+    "nav-vendors-link",
+    "nav-clients-link",
+    "nav-jobs-link",
+    "nav-reports-link",
+    "nav-audit-log-link",
+    "nav-settings-link",
+    "theme-toggle-button",
+    "add-candidate-button",
+    "candidate-duplicate-warning-banner",
+    "candidate-wizard-next-step",
+    "candidate-wizard-submit",
+    "candidate-table",
+    "candidate-row-item",
+    "candidate-detail-tabs",
+    "transfer-group-button",
+    "transfer-group-confirm-dialog",
+    "unassign-group-button",
+    "unassign-confirm-dialog",
+    "bench-workspace-table",
+    "marketing-kanban-board",
+    "marketing-kanban-column",
+    "marketing-candidate-card",
+    "document-upload-button",
+    "document-quarantine-status-badge",
+    "sonner-toast-notification",
+    "audit-log-filter-select",
+    "login-email-input",
+    "login-password-input",
+    "login-submit-button"
+  ],
+  "instructions_to_main_agent": [
+    "Implement desktop-first, highly responsive internal recruitment dashboard for consultancies with role-based access control (Admin, Operations/HR, Lead, Recruiter, Marketing, Viewer, Auditor).",
+    "Strictly follow the color system with high-contrast APCA status badges. NEVER use #1B93A4 teal.",
+    "Header and section titles MUST use Outfit/Manrope font family, not Space Grotesk or Inter.",
+    "Ensure every candidate row, transfer button, modal confirmation input, and status badge includes its specified data-testid attribute.",
+    "Use sonner library for toasts upon completing transfer, placement, unassign, or document quarantine updates.",
+    "Provide seed/mock data rich with realistic consultancy candidates, bench status, marketing submissions, multi-tenant groups, versioned documents with malware scanner badges, and detailed audit log events."
+  ]
+}
