@@ -1,5 +1,10 @@
 from datetime import datetime, timezone, timedelta
 
+import hashlib
+import os
+import re
+import secrets
+
 import httpx
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -26,6 +31,15 @@ class ActivateIn(BaseModel):
     token: str
     password: str
     name: str = None
+
+
+class ForgotIn(BaseModel):
+    email: str
+
+
+class ResetIn(BaseModel):
+    token: str
+    password: str
 
 
 class GoogleIn(BaseModel):
@@ -88,9 +102,13 @@ async def mfa_verify(body: MfaIn, response: Response):
     user = await db.users.find_one({"id": p["sub"]}, {"_id": 0})
     if not user:
         raise HTTPException(401, "User not found")
+    ident = f"mfa:{user['id']}"
+    await check_lock(ident)
     secret = user.get("mfa_secret") if user.get("mfa_enabled") else user.get("pending_mfa_secret")
     if not secret or not pyotp.TOTP(secret).verify(body.code.strip(), valid_window=1):
+        await db.login_attempts.update_one({"identifier": ident}, {"$inc": {"count": 1}, "$set": {"last": now()}}, upsert=True)
         raise HTTPException(401, "Invalid authenticator code")
+    await db.login_attempts.delete_one({"identifier": ident})
     if not user.get("mfa_enabled"):
         await db.users.update_one({"id": user["id"]}, {"$set": {"mfa_enabled": True, "mfa_secret": secret}, "$unset": {"pending_mfa_secret": ""}})
         await audit(user, "MFA_ENROLLED", "user", user["id"])
@@ -99,11 +117,14 @@ async def mfa_verify(body: MfaIn, response: Response):
 
 @router.post("/google/session")
 async def google_session(body: GoogleIn, response: Response):
-    async with httpx.AsyncClient(timeout=15) as c:
-        r = await c.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": body.session_id})
-    if r.status_code != 200:
+    try:
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": body.session_id})
+    except httpx.HTTPError:
+        raise HTTPException(502, "Google sign-in service unavailable. Try again.")
+    data = r.json() if r.status_code == 200 else {}
+    if not data.get("email"):
         raise HTTPException(401, "Google session could not be verified")
-    data = r.json()
     email = data["email"].lower()
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user:
@@ -179,3 +200,59 @@ async def me(user=Depends(get_current_user)):
         groups = [{"id": g["id"], "name": g["name"], "role": user["_groups"][g["id"]]} for g in gs]
     u = {k: v for k, v in user.items() if k != "_groups"}
     return {"user": u, "organization": org, "groups": groups}
+
+
+def token_hash(t: str) -> str:
+    return hashlib.sha256(t.encode()).hexdigest()
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotIn, request: Request):
+    email = body.email.strip().lower()
+    user = await db.users.find_one({"email": email, "status": "ACTIVE"}, {"_id": 0})
+    if user:
+        recent = await db.password_reset_tokens.count_documents({"user_id": user["id"], "created_at": {"$gte": datetime.now(timezone.utc) - timedelta(minutes=15)}})
+        if recent < 3:
+            token = secrets.token_urlsafe(32)
+            await db.password_reset_tokens.update_many({"user_id": user["id"], "used": False}, {"$set": {"used": True}})
+            await db.password_reset_tokens.insert_one({"token_hash": token_hash(token), "user_id": user["id"], "used": False,
+                                                       "created_at": datetime.now(timezone.utc), "expires_at": datetime.now(timezone.utc) + timedelta(hours=1)})
+            origin = os.environ["FRONTEND_URL"].rstrip("/")
+            await db.outbox.insert_one({"id": new_id(), "organization_id": user["organization_id"], "to": email, "subject": "Reset your BenchOS password",
+                                        "body": f"Reset link (valid 1 hour): {origin}/reset-password?token={token}", "status": "PENDING", "attempts": 0, "created_at": now()})
+            await audit(user, "PASSWORD_RESET_REQUESTED", "user", user["id"])
+    return {"ok": True, "message": "If an active account exists for that email, a reset link has been sent."}
+
+
+async def valid_reset(token: str):
+    rec = await db.password_reset_tokens.find_one({"token_hash": token_hash(token), "used": False})
+    if not rec:
+        raise HTTPException(400, "Reset link is invalid or already used")
+    exp = rec["expires_at"]
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < datetime.now(timezone.utc):
+        raise HTTPException(400, "Reset link has expired")
+    return rec
+
+
+@router.get("/reset-password/{token}")
+async def check_reset(token: str):
+    rec = await valid_reset(token)
+    u = await db.users.find_one({"id": rec["user_id"]}, {"_id": 0, "email": 1})
+    return {"email": u["email"]}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetIn):
+    rec = await valid_reset(body.token)
+    if len(body.password) < 8:
+        raise HTTPException(422, "Password must be at least 8 characters")
+    await db.password_reset_tokens.update_one({"token_hash": rec["token_hash"]}, {"$set": {"used": True, "used_at": datetime.now(timezone.utc)}})
+    if not await db.users.find_one({"id": rec["user_id"], "status": "ACTIVE"}):
+        raise HTTPException(403, "Account is not active")
+    user = await db.users.find_one_and_update({"id": rec["user_id"]}, {"$set": {"password_hash": hash_password(body.password)}, "$inc": {"session_version": 1},
+                                                                      "$addToSet": {"auth_methods": "password"}}, projection={"_id": 0})
+    await db.login_attempts.delete_many({"identifier": {"$regex": f":{re.escape(user['email'])}$"}})
+    await audit(user, "PASSWORD_RESET_COMPLETED", "user", user["id"])
+    return {"ok": True}

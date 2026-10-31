@@ -22,6 +22,13 @@ TOTP MFA for Admin; SIMULATED malware scanner; Resend email MOCKED (outbox + log
 - Seed: 2 orgs (Acme full demo, Northwind minimal).
 - Tests: /app/backend/tests/test_benchos.py (32 pass).
 
+## Round 2 (2026-10-31)
+- Password reset: forgot-password (generic response, 1h single-use hashed token, link built from FRONTEND_URL, MOCKED email via outbox), reset page, sessions revoked on reset.
+- Admin MFA reset (typed RESET + reason, not self) -> user re-enrolls TOTP at next login. MFA verify now rate-limited.
+- Platform Organizations screen (/organizations, platform admin only): create consultancy + starter groups + invited admin with activation link.
+- Emergent Google sign-in (invitation-only) verified; hardened error handling.
+- Tests: 42/42 pytest pass (test_benchos.py + test_round2_auth_orgs.py).
+
 ## Backlog
 - P1: Real Resend email delivery; real AV engine (e.g., ClamAV); shadcn date pickers; platform super-admin to create new tenant orgs from UI.
 - P2: Saved views for other pages; bulk actions on tables; CSV export of reports; accessibility audit pass; MFA reset flow; password reset flow.

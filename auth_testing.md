@@ -6,3 +6,5 @@
 - Brute force: 5 failed attempts -> 429 for 15 min (per ip+email).
 - Deactivating a user bumps session_version -> existing tokens get 401.
 - See /app/memory/test_credentials.md for accounts.
+- Google (Emergent) test: create user+session not applicable (we issue our own JWT). Bogus session_id -> 401. Frontend redirect via auth.emergentagent.com, callback handled when URL hash has session_id.
+- Password reset & MFA reset: see /app/memory/test_credentials.md "Round 2".

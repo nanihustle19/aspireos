@@ -35,6 +35,9 @@ async def ensure_indexes():
     await db.bg_jobs.create_index([("status", 1), ("created_at", 1)])
     await db.outbox.create_index("status")
     await db.login_attempts.create_index("identifier")
+    await db.organizations.create_index("slug", unique=True)
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.password_reset_tokens.create_index("token_hash")
     for c in ("submissions", "interviews", "offers", "placements"):
         await db[c].create_index([("organization_id", 1), ("group_id", 1)])
         await db[c].create_index("candidate_id")
@@ -169,6 +172,7 @@ async def seed_org(name, slug, admin_email, admin_password, mfa_secret, full=Tru
 
 async def seed():
     await ensure_indexes()
+    await db.users.update_one({"email": os.environ["ADMIN_EMAIL"].lower(), "is_platform_admin": {"$exists": False}}, {"$set": {"is_platform_admin": True}})
     if await db.organizations.count_documents({}) > 0:
         return
     logger.info("Seeding demo data")

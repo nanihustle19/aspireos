@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { LayoutDashboard, Users, Armchair, Megaphone, Send, CalendarClock, FileSignature, BadgeCheck, Building2, Briefcase, Store,
-  BarChart3, ScrollText, Settings, UsersRound, UserCog, ListTodo, Database, LogOut, Search, PanelLeftClose, PanelLeft, Menu } from "lucide-react";
+  BarChart3, ScrollText, Settings, UsersRound, UserCog, ListTodo, Database, LogOut, Search, PanelLeftClose, PanelLeft, Menu, Building } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -13,6 +13,7 @@ const NAV = [
   ["Directory", [["/jobs", "Jobs", Briefcase, "jobs"], ["/clients", "Clients", Building2, "clients"], ["/vendors", "Vendors", Store, "vendors"]]],
   ["Organization", [["/groups", "Groups", UsersRound, "groups"], ["/users", "Users & Invites", UserCog, "users", "ops"], ["/reports", "Reports", BarChart3, "reports"],
     ["/data", "Imports & Exports", Database, "data"], ["/audit", "Audit Log", ScrollText, "audit-log", "audit"], ["/settings", "Settings", Settings, "settings"]]],
+  ["Platform", [["/organizations", "Organizations", Building, "organizations", "platform"]]],
 ];
 
 export default function Layout() {
@@ -21,7 +22,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [q, setQ] = useState("");
   const nav = useNavigate();
-  const allowed = (flag) => !flag || (flag === "ops" && isOps) || (flag === "audit" && (isOps || isAuditor));
+  const allowed = (flag) => !flag || (flag === "ops" && isOps) || (flag === "audit" && (isOps || isAuditor)) || (flag === "platform" && user?.is_platform_admin);
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
       {mobileOpen && <div className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} data-testid="mobile-nav-scrim" />}
@@ -33,7 +34,7 @@ export default function Layout() {
             <div data-testid="consultancy-tenant-select" className="truncate text-[11px] text-slate-500">{org?.name}</div></div>}
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {NAV.map(([section, items]) => (
+          {NAV.filter(([, items]) => items.some((i) => allowed(i[4]))).map(([section, items]) => (
             <div key={section} className="mb-4">
               {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{section}</div>}
               {items.filter((i) => allowed(i[4])).map(([to, label, Icon, id]) => (

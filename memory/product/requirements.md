@@ -81,3 +81,10 @@ Assumptions: No native mobile app, no candidate portal, no payroll/accounting in
 
 ## Seed Data
 Seed/demo data (sample users, candidates, groups) as part of hardening.
+
+## Round 2
+Password Reset: Let users reset a forgotten password and let admins reset a lost authenticator
+New Organizations: Add a screen so you can create a new consultancy client with its own admin in a few clicks
+
+## Round 2 addition
+Add the Emergent managed Google sign-in integration to my app.

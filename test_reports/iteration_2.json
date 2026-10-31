@@ -1,0 +1,41 @@
+{
+  "summary": "Round 2 testing: password reset (forgot/reset), admin MFA reset, platform Organizations screen (create org + new admin activation + MFA enrollment + tenant isolation), Google sign-in redirect/bogus session. New pytest file test_round2_auth_orgs.py (10 tests) all pass; full regression 42/42 pass (32 old + 10 new). All requested UI flows verified end-to-end via Playwright. No functional bugs found; a few security/code-quality findings reported.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/forgot-password", "issue": "SECURITY (password-reset poisoning): the reset link host comes from the request's Origin header. An attacker can call the API with Origin: https://evil.com for a victim's email, so the victim gets a real token pointing to the attacker's domain. Build the link from a configured env var (e.g. FRONTEND_URL) or check Origin against CORS_ORIGINS. If no Origin is sent, the link is relative ('/reset-password?token=...')."},
+      {"endpoint": "POST /api/auth/mfa/verify", "issue": "No rate limit or lockout on TOTP attempts. The mfa_token can be reused for 10 minutes, so 6-digit codes can be brute-forced. Add an attempt counter per mfa_token or user."},
+      {"endpoint": "POST /api/auth/reset-password", "issue": "login_attempts cleanup uses an unescaped email in the regex (dots act as wildcards); use re.escape. It also does not check user status, so a DEACTIVATED user can still finish a reset from an outstanding token (login is still blocked by the status check)."},
+      {"endpoint": "POST /api/platform/organizations", "issue": "plan is not validated (any string is accepted). There is no unique index on organizations.slug or users.email, so concurrent creates can race past the find_one checks."},
+      {"endpoint": "POST /api/auth/google/session", "issue": "data['email'] KeyError, or an httpx network error, would surface as 500. Wrap in try/except and return 401/502."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login", "issues": ["The 'Forgot password?' link sits between the email and password fields, so Tab goes email -> link -> password. Consider placing it after the password field or giving it tabIndex ordering."]},
+      {"screen": "Create org dialog", "issues": ["Plan uses a native <select> instead of the shadcn Select (same as other FormDialog selects)."]},
+      {"screen": "Users & invitations", "issues": ["The table is cluttered with many deactivated 'TEST Inv' users from regression runs. test_benchos.py should clean up invited test users."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_round2_auth_orgs.py", "/app/backend/tests/test_benchos.py", "/app/backend/tests/ui_prep_round2.py", "/app/test_reports/pytest/pytest_results_iter2.xml"],
+  "action_items": [
+    "Build the password reset link from a trusted configured frontend URL, not the request's Origin header (reset poisoning)",
+    "Add rate limiting to /auth/mfa/verify",
+    "Use re.escape(email) in the reset-password login_attempts cleanup; validate plan values; add unique indexes on organizations.slug and users.email",
+    "Optional: harden google/session error handling (KeyError / network errors -> 401/502)"
+  ],
+  "critical_code_review_comments": [
+    "admin_routes.py is about 545 lines and mixes users, groups, settings, dashboard, reports, imports and platform routes. Consider splitting the platform/org routes into their own module.",
+    "Password reset and MFA reset both correctly bump session_version; verified that old access tokens return 401.",
+    "Seed sets is_platform_admin only when the field is missing (good, idempotent)."
+  ],
+  "updated_files": ["/app/backend/tests/test_round2_auth_orgs.py", "/app/backend/tests/ui_prep_round2.py"],
+  "success_rate": {"backend": "100% (42/42)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Test users, orgs and tokens were created with TEST_/test- prefixes and cleaned up via mongo afterwards. Seeded demo users' passwords were not changed (viewer was not touched). The 'Globex Staffing' (globex-smoke) org created by the main agent was left in place.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `cd /app/backend/tests && python -m pytest /app/backend/tests -q` (pytest.ini uses xdist). test_round2_auth_orgs.py reads reset tokens from mongo db.outbox and cleans up after itself. forgot-password is limited to 3 tokens per user per 15 minutes, so use fresh test users. ui_prep_round2.py creates a user with a reset URL and an Acme ADMIN with MFA enrolled, for UI tests.",
+  "test_credentials": "admin@acme.test / Admin@12345 + TOTP B3ES4OQPDKPZ452SAHMCNNB3FOL2RRXU; ops@acme.test / Demo@12345"
+}

@@ -113,6 +113,25 @@ async def update_user(uid: str, body: UserPatch, user=Depends(get_current_user))
     return {"ok": True}
 
 
+@router.post("/users/{uid}/reset-mfa")
+async def reset_mfa(uid: str, body: dict = None, user=Depends(get_current_user)):
+    require(user, ADMIN)
+    if uid == user["id"]:
+        raise HTTPException(422, "Another administrator must reset your authenticator")
+    target = await db.users.find_one({"id": uid, "organization_id": user["organization_id"]}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if not target.get("mfa_enabled"):
+        raise HTTPException(422, "User has no authenticator enrolled")
+    reason = (body or {}).get("reason") or ""
+    if not reason.strip():
+        raise HTTPException(422, "A reason is required")
+    await db.users.update_one({"id": uid}, {"$set": {"mfa_enabled": False}, "$unset": {"mfa_secret": "", "pending_mfa_secret": ""}, "$inc": {"session_version": 1}})
+    await audit(user, "MFA_RESET", "user", uid, {"mfa_enabled": True}, {"mfa_enabled": False}, reason)
+    await notify(user["organization_id"], [uid], "Your authenticator was reset", "Sign in again to enroll a new authenticator app.")
+    return {"ok": True}
+
+
 @router.get("/invitations")
 async def list_invitations(user=Depends(get_current_user)):
     require(user, ADMIN, OPS)
@@ -464,3 +483,63 @@ async def download_job(jid: str, user=Depends(get_current_user)):
         raise HTTPException(404, "Export not ready")
     await audit(user, "EXPORT_DOWNLOADED", "export", jid)
     return Response(j["result_csv"], media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="candidates-{jid[:8]}.csv"'})
+
+
+class OrgIn(BaseModel):
+    name: str
+    slug: str
+    admin_name: str
+    admin_email: str
+    plan: str = "Professional"
+    default_groups: list = ["Core Bench"]
+
+
+def require_platform(user):
+    if not user.get("is_platform_admin"):
+        raise HTTPException(403, "Platform administrator access required")
+
+
+@router.get("/platform/organizations")
+async def list_orgs(user=Depends(get_current_user)):
+    require_platform(user)
+    orgs = await db.organizations.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for o in orgs:
+        o["user_count"] = await db.users.count_documents({"organization_id": o["id"]})
+        o["candidate_count"] = await db.candidates.count_documents({"organization_id": o["id"]})
+        admin = await db.users.find_one({"organization_id": o["id"], "role": ADMIN}, {"_id": 0, "email": 1, "name": 1, "status": 1}, sort=[("created_at", 1)])
+        o["primary_admin"] = admin
+    return orgs
+
+
+@router.post("/platform/organizations")
+async def create_org(body: OrgIn, user=Depends(get_current_user)):
+    import re
+    require_platform(user)
+    slug = body.slug.strip().lower()
+    email = body.admin_email.strip().lower()
+    if not body.name.strip() or not body.admin_name.strip():
+        raise HTTPException(422, "Organization name and admin name are required")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,40}", slug):
+        raise HTTPException(422, "Slug must be 2-41 chars: lowercase letters, numbers, hyphens")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(422, "Invalid admin email")
+    if body.plan not in ("Starter", "Professional", "Enterprise"):
+        raise HTTPException(422, "Invalid plan")
+    if await db.organizations.find_one({"slug": slug}):
+        raise HTTPException(409, "An organization with this slug already exists")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(409, "A user with this email already exists")
+    oid, uid, token = new_id(), new_id(), secrets.token_urlsafe(32)
+    await db.organizations.insert_one({"id": oid, "name": body.name.strip(), "slug": slug, "plan": body.plan, "created_by": user["id"], "created_at": now()})
+    await db.settings.insert_one({"organization_id": oid, **{k: v for k, v in DEFAULT_SETTINGS.items() if k != "mfa_required_for_admin"}})
+    for g in [x.strip() for x in body.default_groups if x and x.strip()][:10]:
+        await db.groups.insert_one({"id": new_id(), "organization_id": oid, "name": g, "description": "", "active": True, "created_at": now()})
+    await db.users.insert_one({"id": uid, "organization_id": oid, "email": email, "name": body.admin_name.strip(), "role": ADMIN, "status": "INVITED",
+                               "auth_methods": [], "mfa_enabled": False, "session_version": 0, "created_at": now()})
+    await db.invitations.insert_one({"id": new_id(), "organization_id": oid, "user_id": uid, "email": email, "name": body.admin_name.strip(), "role": ADMIN,
+                                     "token": token, "status": "PENDING", "invited_by": user["id"], "invited_by_name": user["name"], "created_at": now(),
+                                     "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()})
+    await db.outbox.insert_one({"id": new_id(), "organization_id": oid, "to": email, "subject": f"Your BenchOS workspace for {body.name} is ready",
+                                "body": f"Activate your administrator account: /activate?token={token}", "status": "PENDING", "attempts": 0, "created_at": now()})
+    await audit(user, "ORGANIZATION_CREATED", "organization", oid, None, {"name": body.name, "slug": slug, "admin_email": email})
+    return {"id": oid, "name": body.name.strip(), "slug": slug, "admin_email": email, "activation_path": f"/activate?token={token}"}

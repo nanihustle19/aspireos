@@ -4,7 +4,8 @@ import { Copy, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, errMsg, fmtDate, fmtDateTime } from "@/lib/api";
-import { Loading, NativeSelect, PageHeader, Panel } from "@/components/Common";
+import { Field, Loading, NativeSelect, PageHeader, Panel } from "@/components/Common";
+import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FormDialog } from "@/pages/Pipeline";
@@ -18,6 +19,8 @@ export default function UsersPage() {
   const [invite, setInvite] = useState(false);
   const [link, setLink] = useState(null);
   const [deact, setDeact] = useState(null);
+  const [mfa, setMfa] = useState(null);
+  const [mfaReason, setMfaReason] = useState("");
   const load = () => { api.get("/users").then((r) => setUsers(r.data)); api.get("/invitations").then((r) => setInvites(r.data)); };
   useEffect(() => { load(); api.get("/groups").then((r) => setGroups(r.data)); }, []);
   const patch = async (u, body, msg) => { try { await api.patch(`/users/${u.id}`, body); toast.success(msg); load(); } catch (e) { toast.error(errMsg(e)); } };
@@ -39,6 +42,7 @@ export default function UsersPage() {
                 <td className="text-xs">{u.mfa_enabled ? "Enabled" : u.role === "ADMIN" ? "Enroll at login" : "—"}</td>
                 <td className="text-xs">{fmtDateTime(u.last_login_at)}</td>
                 <td className="whitespace-nowrap">{isAdmin && u.id !== me.id && u.role === "AUDITOR" && <Button size="sm" variant="ghost" onClick={() => patch(u, { can_view_ops_only: !u.can_view_ops_only }, "Updated")} data-testid={`grant-ops-${u.id}`}>{u.can_view_ops_only ? "Revoke ops-notes" : "Grant ops-notes"}</Button>}
+                  {isAdmin && u.id !== me.id && u.mfa_enabled && <Button size="sm" variant="ghost" onClick={() => { setMfaReason(""); setMfa(u); }} data-testid={`reset-mfa-${u.id}`}>Reset MFA</Button>}
                   {isAdmin && u.id !== me.id && u.status === "ACTIVE" && <Button size="sm" variant="ghost" className="text-rose-700" onClick={() => setDeact(u)} data-testid={`deactivate-user-${u.id}`}>Deactivate</Button>}
                   {isAdmin && u.status === "DEACTIVATED" && <Button size="sm" variant="ghost" onClick={() => patch(u, { status: "ACTIVE" }, "User reactivated")} data-testid={`reactivate-user-${u.id}`}>Reactivate</Button>}</td></tr>))}</tbody></table>
         </Panel></TabsContent>
@@ -60,6 +64,12 @@ export default function UsersPage() {
         description="Email delivery is MOCKED (logged to outbox). Share this link with the invitee."
         onConfirm={async () => { await navigator.clipboard?.writeText(link).catch(() => {}); toast.success("Link copied"); setLink(null); }}>
         <code data-testid="invite-activation-link" className="block break-all rounded bg-slate-100 p-2 text-xs">{link}</code>
+      </ConfirmDialog>
+      <ConfirmDialog open={!!mfa} onOpenChange={() => setMfa(null)} title={`Reset authenticator for ${mfa?.name}?`} testId="reset-mfa-dialog" confirmWord="RESET" destructive
+        disabled={!mfaReason.trim()} confirmLabel="Reset MFA"
+        description="Removes their enrolled authenticator and signs them out everywhere. On next sign-in they must enroll a new authenticator app."
+        onConfirm={async () => { try { await api.post(`/users/${mfa.id}/reset-mfa`, { reason: mfaReason }); toast.success("Authenticator reset"); setMfa(null); load(); } catch (e) { toast.error(errMsg(e)); } }}>
+        <Field label="Reason *"><Input data-testid="reset-mfa-reason-input" value={mfaReason} onChange={(e) => setMfaReason(e.target.value)} placeholder="e.g. Lost phone, identity verified by phone call" /></Field>
       </ConfirmDialog>
       <ConfirmDialog open={!!deact} onOpenChange={() => setDeact(null)} title={`Deactivate ${deact?.name}?`} testId="deactivate-user-dialog" confirmWord="DEACTIVATE" destructive
         description="Sessions are revoked immediately, group memberships end, owned candidates have their owner cleared, and leads/operations are notified."

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,7 @@ export default function Login() {
               <form onSubmit={submit} className="space-y-4" data-testid="login-form">
                 <Field label="Work email"><Input data-testid="login-email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
                 <Field label="Password"><Input data-testid="login-password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
+                <div className="-mt-2 flex justify-end"><Link to="/forgot-password" data-testid="forgot-password-link" className="text-xs text-indigo-700 hover:underline">Forgot password?</Link></div>
                 <InlineError error={error} testId="login-error" />
                 <Button data-testid="login-submit-button" type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
               </form>

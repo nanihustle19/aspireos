@@ -23,6 +23,8 @@ import Reports from "@/pages/Reports";
 import AuditLog from "@/pages/AuditLog";
 import DataJobs from "@/pages/DataJobs";
 import SettingsPage from "@/pages/Settings";
+import Organizations from "@/pages/Organizations";
+import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 
 function Protected({ children }) {
   const { session } = useAuth();
@@ -38,6 +40,8 @@ function AppRouter() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/activate" element={<Activate />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<Protected><Layout /></Protected>}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -61,6 +65,7 @@ function AppRouter() {
         <Route path="/audit" element={<AuditLog />} />
         <Route path="/data" element={<DataJobs />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/organizations" element={<Organizations />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
