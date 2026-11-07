@@ -4,38 +4,44 @@ import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, InlineError } from "@/components/Common";
-import { api, errMsg } from "@/lib/api";
+import { api, BACKEND, errMsg } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export const googleLogin = () => {
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+  // Google OAuth: redirect to backend which handles the OAuth flow
   const redirectUrl = window.location.origin + "/dashboard";
-  window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  window.location.href = `${BACKEND}/api/auth/google/redirect?redirect_url=${encodeURIComponent(redirectUrl)}`;
 };
 
 export const MfaStep = ({ pending, onDone }) => {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
+    if (busy || code.length !== 6) return;
+    setBusy(true);
     setError("");
-    try { const { data } = await api.post("/auth/mfa/verify", { mfa_token: pending.mfa_token, code }); onDone(data); }
-    catch (err) { setError(errMsg(err)); }
+    try { const { data } = await api.post("/auth/mfa/verify", { mfa_token: pending.mfa_token, code }); await onDone(data); }
+    catch (err) { setError(errMsg(err)); } finally { setBusy(false); }
   };
   return (
     <form onSubmit={submit} className="space-y-4" data-testid="mfa-form">
       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><ShieldCheck className="h-4 w-4 text-indigo-600" />Multi-factor authentication required</div>
       {pending.mfa_setup_required && (
         <div className="rounded border bg-slate-50 p-3 text-xs text-slate-700" data-testid="mfa-setup-info">
-          Administrators must enroll an authenticator app. Add this secret to Google Authenticator, 1Password or Authy:
+          <p className="font-semibold">Set up your authenticator</p>
+          <p className="mt-1">Scan this code with your authenticator app, then enter the six-digit code it shows.</p>
+          {pending.qr_image && <img src={pending.qr_image} alt="Authenticator setup QR code" className="my-3 h-36 w-36 rounded border bg-white" />}
+          <p className="mt-2">You can also enter this key manually.</p>
           <div data-testid="mfa-setup-secret" className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">{pending.secret}</div>
         </div>
       )}
-      <Field label="6-digit authenticator code">
-        <Input data-testid="mfa-code-input" autoFocus inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="font-mono tracking-[0.3em]" />
+      <Field id="mfa-code" label="6-digit authenticator code">
+        <Input id="mfa-code" data-testid="mfa-code-input" autoFocus autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="font-mono tracking-[0.3em]" />
       </Field>
       <InlineError error={error} testId="mfa-error" />
-      <Button data-testid="mfa-submit-button" type="submit" className="w-full" disabled={code.length !== 6}>Verify & continue</Button>
+      <Button data-testid="mfa-submit-button" type="submit" className="w-full" disabled={busy || code.length !== 6}>{busy ? "Verifying…" : "Verify & continue"}</Button>
     </form>
   );
 };

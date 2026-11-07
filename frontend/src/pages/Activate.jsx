@@ -18,6 +18,8 @@ export default function Activate() {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [pending, setPending] = useState(null);
+  const [temporary, setTemporary] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.get(`/auth/invitations/${token}`).then((r) => { setInv(r.data); setName(r.data.name || ""); }).catch((e) => setError(errMsg(e)));
@@ -27,10 +29,12 @@ export default function Activate() {
   const pwError = pw && pw.length < 8 ? "At least 8 characters" : pw2 && pw !== pw2 ? "Passwords do not match" : "";
   const submit = async (e) => {
     e.preventDefault();
+    setBusy(true);
+    setError("");
     try {
-      const { data } = await api.post("/auth/activate", { token, password: pw, name });
+      const { data } = await api.post("/auth/activate", { token, password: pw, name, temporary_password: temporary || null });
       if (data.mfa_required || data.mfa_setup_required) setPending(data); else await finish(data);
-    } catch (err) { setError(errMsg(err)); }
+    } catch (err) { setError(errMsg(err)); } finally { setBusy(false); }
   };
 
   return (
@@ -43,14 +47,15 @@ export default function Activate() {
           <>
             <p className="mb-5 text-sm text-slate-600">You were invited to <b>{inv.organization}</b> as <b>{inv.role}</b> ({inv.email}).</p>
             <form onSubmit={submit} className="space-y-4">
-              <Field label="Full name"><Input data-testid="activate-name-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-              <Field label="Password" error={pw && pw.length < 8 ? "At least 8 characters" : ""}><Input data-testid="activate-password-input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-              <Field label="Confirm password" error={pw2 && pw !== pw2 ? "Passwords do not match" : ""}><Input data-testid="activate-password-confirm-input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+              <Field id="activate-name" label="Full name"><Input id="activate-name" data-testid="activate-name-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+              {inv.temporary_password_required && <Field id="activate-temporary" label="Temporary password"><Input id="activate-temporary" type="password" autoComplete="current-password" required value={temporary} onChange={(e) => setTemporary(e.target.value)} /></Field>}
+              <Field id="activate-password" label="New password" error={pw && pw.length < 8 ? "At least 8 characters" : ""}><Input id="activate-password" data-testid="activate-password-input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+              <Field id="activate-confirm" label="Confirm password" error={pw2 && pw !== pw2 ? "Passwords do not match" : ""}><Input id="activate-confirm" data-testid="activate-password-confirm-input" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
               <InlineError error={inv && error} testId="activate-submit-error" />
-              <Button data-testid="activate-submit-button" type="submit" className="w-full" disabled={!pw || !!pwError || pw !== pw2}>Set password & activate</Button>
+              <Button data-testid="activate-submit-button" type="submit" className="w-full" disabled={busy || !pw || !!pwError || pw !== pw2 || (inv.temporary_password_required && !temporary)}>{busy ? "Activating…" : "Set password & activate"}</Button>
             </form>
-            <div className="my-4 text-center text-xs text-slate-400">or</div>
-            <Button data-testid="activate-google-button" variant="outline" className="w-full" onClick={googleLogin}>Activate with Google ({inv.email})</Button>
+            {!inv.temporary_password_required && <><div className="my-4 text-center text-xs text-slate-500">or</div>
+            <Button data-testid="activate-google-button" variant="outline" className="w-full" onClick={googleLogin}>Activate with Google</Button></>}
           </>
         ))}
       </div>

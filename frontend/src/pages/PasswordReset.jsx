@@ -1,74 +1,162 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2 } from "lucide-react";
+import { Check, KeyRound, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, InlineError, Loading } from "@/components/Common";
+import { useAuth } from "@/context/AuthContext";
 import { api, errMsg } from "@/lib/api";
 
-const Shell = ({ title, children, testId }) => (
-  <div className="grid min-h-screen place-items-center bg-slate-50 p-6">
-    <div className="w-full max-w-md rounded-md border bg-white p-8 fade-up" data-testid={testId}>
-      <div className="mb-1 font-display text-2xl font-bold">{title}</div>
+const Shell = ({ title, children, testId, icon: Icon = KeyRound, hideBack = false }) => (
+  <main className="grid min-h-screen place-items-center bg-background p-4 sm:p-8">
+    <section className="w-full max-w-md rounded-xl border bg-card p-6 shadow-sm sm:p-8" data-testid={testId}>
+      <div className="mb-5 grid h-11 w-11 place-items-center rounded-lg bg-accent text-accent-foreground"><Icon aria-hidden="true" className="h-5 w-5" /></div>
+      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
       {children}
-      <Link to="/login" data-testid="back-to-login-link" className="mt-5 inline-block text-sm text-indigo-700 hover:underline">Back to sign in</Link>
-    </div>
-  </div>
+      {!hideBack && <Button variant="link" asChild className="mt-5 px-0"><Link to="/login" data-testid="back-to-login-link">Back to sign in</Link></Button>}
+    </section>
+  </main>
 );
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState("");
+  const [sent, setSent] = useState(false);
+  const [until, setUntil] = useState(0);
+  const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!until) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setSeconds(remaining);
+      if (!remaining) setUntil(0);
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [until]);
+
   const submit = async (e) => {
-    e.preventDefault(); setBusy(true); setError("");
-    try { const { data } = await api.post("/auth/forgot-password", { email }); setSent(data.message); }
-    catch (err) { setError(errMsg(err)); } finally { setBusy(false); }
+    e.preventDefault();
+    if (busy || until) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/auth/forgot-password", { email: email.trim() });
+      setSent(true);
+      setSeconds(60);
+      setUntil(Date.now() + 60000);
+    } catch (err) { setError(errMsg(err)); }
+    finally { setBusy(false); }
   };
+
   return (
-    <Shell title="Forgot password" testId="forgot-password-page">
-      {sent ? (
-        <div data-testid="forgot-password-sent" className="mt-4 flex gap-2 rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" />{sent}</div>
-      ) : (
-        <form onSubmit={submit} className="mt-4 space-y-4">
-          <p className="text-sm text-slate-600">Enter your work email and we’ll send a one-hour reset link.</p>
-          <Field label="Work email"><Input data-testid="forgot-email-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-          <InlineError error={error} testId="forgot-error" />
-          <Button data-testid="forgot-submit-button" type="submit" className="w-full" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</Button>
-          <p className="text-xs text-slate-500">Lost your authenticator app? Ask another administrator to reset it from Users &amp; Invites.</p>
-        </form>
-      )}
+    <Shell title={sent ? "Check your email" : "Forgot password"} testId="forgot-password-page" icon={Mail}>
+      <form onSubmit={submit} className="mt-3 space-y-4">
+        {sent ? (
+          <div data-testid="forgot-password-sent" role="status" className="space-y-2 text-sm text-slate-700">
+            <p>If an account exists for that email, we’ve sent a password reset link.</p>
+            <p>Check your spam folder if it doesn’t arrive. The link is valid for one hour.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-slate-700">Enter your work email to request a secure reset link.</p>
+            <Field id="forgot-email" label="Work email"><Input id="forgot-email" data-testid="forgot-email-input" type="email" autoComplete="email" required maxLength={320} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+          </>
+        )}
+        <InlineError error={error} testId="forgot-error" />
+        <Button data-testid="forgot-submit-button" type="submit" variant={sent ? "outline" : "default"} className="w-full" disabled={busy || !!until}>
+          {busy ? "Sending…" : sent ? seconds ? "Resend in " + seconds + "s" : "Resend link" : "Send reset link"}
+        </Button>
+      </form>
     </Shell>
   );
 }
 
 export function ResetPassword() {
   const [params] = useSearchParams();
-  const token = params.get("token");
+  return <ResetForm key={params.get("token")} token={params.get("token")} />;
+}
+
+function ResetForm({ token }) {
+  const { logout } = useAuth();
   const [info, setInfo] = useState(null);
   const [error, setError] = useState("");
+  const [checkError, setCheckError] = useState(null);
+  const [retry, setRetry] = useState(0);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [visible, setVisible] = useState(false);
   const [done, setDone] = useState(false);
-  useEffect(() => { api.get(`/auth/reset-password/${token}`).then((r) => setInfo(r.data)).catch((e) => setError(errMsg(e))); }, [token]);
+  const [busy, setBusy] = useState(false);
+  const lengthOk = Array.from(pw).length >= 8;
+  const sizeOk = new TextEncoder().encode(pw).length <= 72;
+  const matches = !!pw && pw === pw2;
+  const strength = !pw ? 0 : !lengthOk || !sizeOk ? 1 : pw.length >= 14 && new Set(pw).size >= 8 ? 3 : 2;
+
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    api.post("/auth/reset-password/check", { token }, { signal: controller.signal })
+      .then((r) => setInfo(r.data))
+      .catch((e) => { if (!controller.signal.aborted) setCheckError({ expired: e.response?.status === 422, message: errMsg(e) }); });
+    return () => controller.abort();
+  }, [token, retry]);
+
   const submit = async (e) => {
     e.preventDefault();
-    try { await api.post("/auth/reset-password", { token, password: pw }); setDone(true); } catch (err) { setError(errMsg(err)); }
+    if (!lengthOk || !sizeOk || !matches || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/auth/reset-password", { token, password: pw });
+      await logout();
+      setDone(true);
+    } catch (err) {
+      if (err.response?.status === 422 && /link/i.test(errMsg(err))) {
+        setInfo(null);
+        setCheckError({ expired: true });
+      } else {
+        setError(errMsg(err));
+      }
+    } finally { setBusy(false); }
   };
+
   return (
-    <Shell title="Choose a new password" testId="reset-password-page">
-      {!info && !error && <Loading />}
-      {error && !info && <div className="mt-4"><InlineError error={error} testId="reset-token-error" /><Link to="/forgot-password" className="mt-3 inline-block text-sm text-indigo-700 hover:underline">Request a new link</Link></div>}
+    <Shell title={done ? "Password updated" : "Set a new password"} testId="reset-password-page" hideBack={done}>
+      {token && !info && !checkError && <Loading />}
+      {(!token || checkError) && <div className="mt-4 space-y-3">
+        <InlineError error={!token || checkError.expired ? "This link is missing, expired, or already used. Request a new one to continue." : checkError.message} testId="reset-token-error" />
+        {!token || checkError.expired
+          ? <Button asChild><Link to="/forgot-password">Request a new link</Link></Button>
+          : <Button onClick={() => { setCheckError(null); setRetry(retry + 1); }}>Try again</Button>}
+      </div>}
       {info && (done ? (
-        <div data-testid="reset-password-success" className="mt-4 rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">Password updated. All existing sessions were signed out — sign in with your new password.</div>
+        <div data-testid="reset-password-success" role="status" className="mt-4 space-y-4">
+          <p className="feedback-success rounded-lg p-3 text-sm">Your other sessions were signed out. You can now sign in with your new password.</p>
+          <Button asChild className="w-full"><Link to="/login">Go to sign in</Link></Button>
+        </div>
       ) : (
         <form onSubmit={submit} className="mt-4 space-y-4">
-          <p className="text-sm text-slate-600">Resetting password for <b>{info.email}</b>.</p>
-          <Field label="New password" error={pw && pw.length < 8 ? "At least 8 characters" : ""}><Input data-testid="reset-password-input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-          <Field label="Confirm new password" error={pw2 && pw !== pw2 ? "Passwords do not match" : ""}><Input data-testid="reset-password-confirm-input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+          <p className="break-words text-sm text-slate-700">Updating the password for <strong>{info.email}</strong>.</p>
+          <Field id="new-password" label="New password">
+            <Input id="new-password" data-testid="reset-password-input" type={visible ? "text" : "password"} autoComplete="new-password" aria-describedby="password-requirements" value={pw} onChange={(e) => setPw(e.target.value)} />
+          </Field>
+          <Field id="confirm-password" label="Confirm new password" error={pw2 && !matches ? "Passwords don’t match." : ""}>
+            <Input id="confirm-password" data-testid="reset-password-confirm-input" type={visible ? "text" : "password"} autoComplete="new-password" aria-invalid={!!pw2 && !matches} aria-describedby={pw2 && !matches ? "confirm-password-feedback" : undefined} value={pw2} onChange={(e) => setPw2(e.target.value)} />
+          </Field>
+          <Button type="button" variant="outline" size="sm" aria-pressed={visible} onClick={() => setVisible(!visible)}>{visible ? "Hide passwords" : "Show passwords"}</Button>
+          <div id="password-requirements" className="space-y-2 rounded-lg bg-muted p-3 text-xs text-slate-700">
+            <div className="flex justify-between"><span>Password strength</span><span>{["Not entered", "Weak", "Fair", "Strong"][strength]}</span></div>
+            <meter className="h-2 w-full" min={0} max={3} value={strength} aria-label="Password strength" />
+            <ul className="space-y-1">
+              {[[lengthOk, "At least 8 characters"], [!!pw && sizeOk, "At most 72 bytes"], [matches, "Both passwords match"]].map(([met, label]) => <li key={label} className="flex items-center gap-2"><span className="sr-only">{met ? "Met" : "Not met"}</span>{met ? <Check aria-hidden="true" className="h-3.5 w-3.5 text-emerald-700" /> : <span aria-hidden="true" className="w-3.5 text-center">○</span>}{label}</li>)}
+            </ul>
+          </div>
           <InlineError error={error} testId="reset-error" />
-          <Button data-testid="reset-submit-button" type="submit" className="w-full" disabled={pw.length < 8 || pw !== pw2}>Update password</Button>
+          <Button data-testid="reset-submit-button" type="submit" className="w-full" disabled={busy || !lengthOk || !sizeOk || !matches}>{busy ? "Updating…" : "Update password"}</Button>
         </form>
       ))}
     </Shell>

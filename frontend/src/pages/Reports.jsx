@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "@/lib/api";
-import { Loading, PageHeader, Panel } from "@/components/Common";
+import { api, errMsg } from "@/lib/api";
+import { InlineError, Loading, PageHeader, Panel } from "@/components/Common";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export default function Reports() {
   const [d, setD] = useState(null);
-  useEffect(() => { api.get("/reports/summary").then((r) => setD(r.data)); }, []);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    api.get("/reports/summary").then((r) => setD(r.data)).catch((err) => setError(errMsg(err)));
+  }, []);
+  if (error) return <InlineError error={error} testId="reports-error" />;
   if (!d) return <Loading />;
   return (
     <div data-testid="reports-page">

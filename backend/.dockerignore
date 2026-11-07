@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.git
+.env
+.env.*
+!.env.example
+venv
+.venv
+!alembic/versions/.gitkeep
+_legacy_README.md
+
+_legacy/

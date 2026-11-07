@@ -27,6 +27,7 @@ next-env.d.ts
 
 # Production builds
 /build
+/frontend/build/
 dist/
 dist
 
@@ -91,6 +92,7 @@ frontend/node_modules/.cache/default-development/8.pack
 frontend/node_modules/.cache/default-development/9.pack
 .env
 .env.*
+!.env.example
 *.env
 credentials.json
 *.key

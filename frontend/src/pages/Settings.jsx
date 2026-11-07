@@ -42,7 +42,7 @@ export default function SettingsPage() {
             <Button variant="outline" size="sm" data-testid="logout-all-button" onClick={async () => { await api.post("/auth/logout-all"); await logout(); window.location.href = "/login"; }}>Sign out of all sessions</Button>
           </div>
         </Panel>
-        {isAdmin && <Panel title="Email outbox (MOCKED — Resend not connected)" className="xl:col-span-2" testId="outbox-panel">
+        {isAdmin && <Panel title="Email outbox" className="xl:col-span-2" testId="outbox-panel">
           <table className="dense-table w-full"><thead><tr><th>To</th><th>Subject</th><th>Status</th><th>Created</th></tr></thead>
             <tbody>{outbox.slice(0, 50).map((m) => <tr key={m.id}><td className="text-xs">{m.to}</td><td className="text-xs">{m.subject}</td><td><StatusBadge status={m.status === "SENT_MOCK" ? "COMPLETED" : m.status} /></td><td className="text-xs">{fmtDateTime(m.created_at)}</td></tr>)}</tbody></table>
         </Panel>}
