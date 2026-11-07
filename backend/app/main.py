@@ -18,15 +18,15 @@ logger = logging.getLogger("benchos")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
-    logger.info("BenchOS API starting up...")
+    logger.info("AspireOs API starting up...")
     # Initialize S3 storage bucket
     await init_storage()
     yield
     await engine.dispose()
-    logger.info("BenchOS API shut down")
+    logger.info("AspireOs API shut down")
 
 
-app = FastAPI(title="BenchOS API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="AspireOs API", version="1.0.0", lifespan=lifespan)
 
 
 @app.exception_handler(OperationalError)
@@ -77,7 +77,7 @@ async def health():
 async def add_security_headers(request: Request, call_next):
     origin = request.headers.get("Origin")
     if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and origin not in origins and origin != settings.FRONTEND_URL.rstrip("/"):
-        response = JSONResponse(status_code=403, content={"detail": "Open BenchOS from its configured web address and try again."})
+        response = JSONResponse(status_code=403, content={"detail": "Open AspireOs from its configured web address and try again."})
     else:
         response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"

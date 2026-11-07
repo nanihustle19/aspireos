@@ -1,6 +1,6 @@
 """Database seeder — PostgreSQL/SQLAlchemy version.
 
-Creates demo data for BenchOS: organizations, users, groups, candidates,
+Creates demo data for AspireOs: organizations, users, groups, candidates,
 vendors, clients, jobs, submissions, interviews, offers, placements,
 notes, tasks, notifications, and settings.
 
@@ -411,7 +411,7 @@ async def seed_org(
     # Welcome notification
     session.add(Notification(
         id=new_uuid(), organization_id=oid, user_id=users["admin"],
-        title="Welcome to BenchOS",
+        title="Welcome to AspireOs",
         body="Demo data has been loaded.", read=False,
     ))
 

@@ -1,5 +1,5 @@
 /**
- * BenchOS — Shared TypeScript type definitions.
+ * AspireOs — Shared TypeScript type definitions.
  *
  * These types match the backend SQLAlchemy models and API responses.
  */

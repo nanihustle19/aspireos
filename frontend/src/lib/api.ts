@@ -62,7 +62,7 @@ interface ErrorDetail {
 export function errMsg(e: unknown): string {
   const ax = e as AxiosError<{ detail: string | ErrorDetail[] | ErrorDetail }>;
   if (ax?.code === "ERR_NETWORK") {
-    return "Could not reach the BenchOS server. Please try again shortly.";
+    return "Could not reach the AspireOs server. Please try again shortly.";
   }
   const d = ax?.response?.data?.detail;
   if (d == null) return (e as Error)?.message || "Something went wrong. Please try again.";

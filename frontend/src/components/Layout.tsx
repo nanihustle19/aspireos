@@ -33,8 +33,8 @@ export default function Layout() {
       <aside data-testid="app-sidebar" onClick={(e: React.MouseEvent<HTMLElement>) => (e.target as HTMLElement).closest("a") && setMobileOpen(false)}
         className={`${collapsed ? "md:w-16" : "md:w-60"} w-64 ${mobileOpen ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} md:static md:flex shrink-0 flex-col border-r bg-white transition-[width] duration-200`}>
         <div className="flex h-14 items-center gap-2 border-b px-4">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded bg-indigo-600 font-display text-sm font-bold text-white">B</div>
-          {!collapsed && <div className="min-w-0"><div className="font-display text-sm font-bold leading-tight">BenchOS</div>
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded bg-indigo-600 font-display text-sm font-bold text-white" role="img" aria-label="AspireOs">A</div>
+          {!collapsed && <div className="min-w-0"><div className="font-display text-sm font-bold leading-tight">AspireOs</div>
             <div data-testid="consultancy-tenant-select" className="truncate text-[11px] text-slate-500">{org?.name}</div></div>}
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">

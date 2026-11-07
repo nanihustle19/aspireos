@@ -358,7 +358,7 @@ async def mfa_gate(db: AsyncSession, user_dict: dict, user_obj: User, resp: Resp
     secret = pyotp.random_base32()
     user_obj.pending_mfa_secret = secret
     await db.flush()
-    uri = pyotp.TOTP(secret).provisioning_uri(name=user_dict["email"], issuer_name="BenchOS")
+    uri = pyotp.TOTP(secret).provisioning_uri(name=user_dict["email"], issuer_name="AspireOs")
     qr = qrcode.make(uri, image_factory=SvgPathFillImage).to_string()
     return {
         "mfa_setup_required": True, "mfa_token": mfa_token, "secret": secret, "otpauth_uri": uri,

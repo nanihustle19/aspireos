@@ -314,7 +314,7 @@ async def create_invitation(body: InviteIn, user=Depends(get_current_user), db: 
     db.add(inv)
     db.add(EmailOutbox(
         id=new_id(), organization_id=user["organization_id"], to=email,
-        subject="You're invited to BenchOS",
+        subject="You're invited to AspireOs",
         body=f"Activate your account: {get_settings().FRONTEND_URL.rstrip('/')}/activate?token={token}",
         status="PENDING", attempts=0,
     ))
@@ -971,7 +971,7 @@ async def create_org(body: OrgIn, user=Depends(get_current_user), db: AsyncSessi
     if delivery_id:
         db.add(EmailOutbox(
             id=delivery_id, organization_id=oid, to=email,
-            subject=f"Your BenchOS workspace for {body.name.strip()} is ready",
+            subject=f"Your AspireOs workspace for {body.name.strip()} is ready",
             body=f"Activate your administrator account: {get_settings().FRONTEND_URL.rstrip('/')}/activate?token={token}",
             status="PENDING", attempts=0,
         ))

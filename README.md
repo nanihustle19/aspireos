@@ -1,4 +1,4 @@
-# BenchOS — Consultancy Recruitment & Bench Manager
+# AspireOs — Consultancy Recruitment & Bench Manager
 
 Internal recruitment and bench-management platform for consultancies. Manages candidate intake, bench tracking, group assignment, marketing, vendor/client submissions, interviews, offers, placements, and full audit/history.
 

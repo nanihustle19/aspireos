@@ -76,7 +76,7 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-slate-900 p-12 text-white lg:flex">
         <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
-        <div className="relative flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded bg-indigo-500 font-display font-bold">B</div><span className="font-display text-lg font-bold">BenchOS</span></div>
+        <div className="relative flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded bg-indigo-500 font-display font-bold" aria-hidden="true">A</div><span className="font-display text-lg font-bold">AspireOs</span></div>
         <div className="relative max-w-lg">
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl">Every consultant. Every group. Every move — on the record.</h1>
           <p className="mt-4 text-base text-slate-300">Intake, bench, marketing, submissions, interviews, offers and placements with transactional group control and a complete audit trail.</p>
@@ -87,6 +87,7 @@ export default function Login() {
       </div>
       <div className="flex items-center justify-center bg-white p-6">
         <div className="w-full max-w-sm fade-up">
+          <div className="mb-6 flex items-center gap-2 lg:hidden"><div aria-hidden="true" className="grid h-9 w-9 place-items-center rounded bg-indigo-600 font-display font-bold text-white">A</div><span className="font-display text-lg font-bold">AspireOs</span></div>
           <h2 className="text-2xl font-bold tracking-tight">Sign in</h2>
           <p className="mb-6 mt-1 text-sm text-slate-600">Access is by invitation only.</p>
           {pending ? <MfaStep pending={pending} onDone={finish} /> : (

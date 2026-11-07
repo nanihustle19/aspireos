@@ -90,7 +90,7 @@ class PostgreSQLIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cross_site.status_code, 403)
         async with async_session() as db:
             messages = (await db.scalars(select(EmailOutbox).where(
-                EmailOutbox.to == self.peer, EmailOutbox.subject == "Reset your BenchOS password",
+                EmailOutbox.to == self.peer, EmailOutbox.subject == "Reset your AspireOs password",
             ))).all()
             self.assertEqual(len(messages), 1)
             token = re.search(r"token=([\w-]+)", messages[0].body)[1]

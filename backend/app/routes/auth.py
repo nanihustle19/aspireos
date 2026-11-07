@@ -444,7 +444,7 @@ async def forgot_password(body: ForgotIn, request: Request, db: AsyncSession = D
     link = f"{settings.FRONTEND_URL}/reset-password?token={raw}"
     db.add(EmailOutbox(
         id=new_id(), organization_id=user.organization_id, to=user.email,
-        subject="Reset your BenchOS password",
+        subject="Reset your AspireOs password",
         body=f"Click the link to reset your password within 1 hour: {link}",
         status="PENDING", attempts=0,
     ))
